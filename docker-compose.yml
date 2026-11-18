@@ -1,0 +1,70 @@
+services:
+  target-node:
+    build: ./target-node
+    container_name: demo-target-node
+    hostname: target-server
+    networks:
+      isolated-net:
+        ipv4_address: 172.28.1.10
+    volumes:
+      - target-data:/app/critical_data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+
+  mock-c2:
+    build: ./attacker-sim
+    container_name: demo-mock-c2
+    hostname: c2-server
+    command: ["python3", "/sim/mock_c2.py"]
+    networks:
+      isolated-net:
+        ipv4_address: 172.28.1.99
+    security_opt:
+      - no-new-privileges:true
+
+  monitor-engine:
+    build: ./monitor-engine
+    container_name: demo-monitor-engine
+    restart: unless-stopped
+    pid: "service:target-node"
+    volumes:
+      - target-data:/watch/critical_data:ro
+      - ./shared-logs:/logs
+    environment:
+      - TARGET_CONTAINER=demo-target-node
+      - LOG_PATH=/logs/events.jsonl
+    depends_on:
+      - target-node
+    network_mode: "none"
+
+  orchestrator:
+    build: ./orchestrator
+    container_name: demo-orchestrator
+    volumes:
+      - ./shared-logs:/logs
+      - ./target-node/critical_data:/backup_data:ro
+      - target-data:/restore_target
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TARGET_CONTAINER=demo-target-node
+      - ISOLATED_NETWORK=aegis-selfheal-lab_isolated-net
+      - LOG_PATH=/logs/events.jsonl
+    networks:
+      - isolated-net
+    depends_on:
+      - monitor-engine
+
+volumes:
+  target-data:
+
+networks:
+  isolated-net:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.28.1.0/24

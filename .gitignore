@@ -1,0 +1,5 @@
+shared-logs/*.jsonl
+shared-logs/*.md
+sys_updater_bin
+__pycache__/
+*.pyc

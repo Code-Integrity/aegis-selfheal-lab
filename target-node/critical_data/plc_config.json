@@ -1,0 +1,6 @@
+{
+  "plant": "Shizuoka-Factory-01",
+  "plc_ip": "10.240.12.55",
+  "safety_interlock": true,
+  "max_rpm": 4500
+}
